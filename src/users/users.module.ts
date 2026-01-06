@@ -6,6 +6,7 @@ import { Users } from './entities/user.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthGuard } from 'common/guard/auth-guard.guard';
+import { SupabaseService } from 'src/provider/supabase.service';
 
 @Module({
   imports: [
@@ -19,6 +20,6 @@ import { AuthGuard } from 'common/guard/auth-guard.guard';
     }),
   ],
   controllers: [UsersController],
-  providers: [UsersService, AuthGuard],
+  providers: [UsersService, AuthGuard, SupabaseService],
 })
 export class UsersModule {}

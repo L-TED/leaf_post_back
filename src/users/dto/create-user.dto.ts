@@ -2,9 +2,7 @@ import { Transform } from 'class-transformer';
 import {
   IsEmail,
   IsNotEmpty,
-  IsOptional,
   IsString,
-  IsUrl,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -26,13 +24,4 @@ export class CreateUserDto {
   @IsNotEmpty()
   @MaxLength(50)
   nickname: string;
-
-  @Transform(({ value }) => {
-    if (typeof value !== 'string') return value;
-    const trimmed = value.trim();
-    return trimmed.length === 0 ? undefined : trimmed;
-  })
-  @IsOptional()
-  @IsUrl({ require_protocol: true })
-  profileImageUrl?: string;
 }

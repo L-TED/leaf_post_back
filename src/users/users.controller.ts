@@ -8,6 +8,11 @@ import {
   Req,
   UnauthorizedException,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -15,6 +20,8 @@ import { UpdateNicknameDto } from './dto/update-nickname.dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import type { Request } from 'express';
 import { AuthGuard } from 'common/guard/auth-guard.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 
 @Controller('users')
 export class UsersController {
@@ -38,8 +45,25 @@ export class UsersController {
   }
 
   @Post('signup')
-  signup(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+    }),
+  )
+  signup(
+    @Body() createUserDto: CreateUserDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        fileIsRequired: false,
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /(png|jpg|jpeg)$/ }),
+        ],
+      }),
+    )
+    file?: Express.Multer.File,
+  ) {
+    return this.usersService.create(createUserDto, file);
   }
 
   @UseGuards(AuthGuard)

@@ -12,6 +12,7 @@ import { Users } from './entities/user.entity';
 import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { SupabaseService } from 'src/provider/supabase.service';
 
 @Injectable()
 export class UsersService {
@@ -19,6 +20,7 @@ export class UsersService {
     @InjectRepository(Users)
     private readonly usersRepo: Repository<Users>,
     private readonly jwtService: JwtService,
+    private readonly supabaseService: SupabaseService,
   ) {}
 
   decodeAccessToken(token: string): { sub?: string } | null {
@@ -29,11 +31,15 @@ export class UsersService {
     return typeof maybeSub === 'string' ? { sub: maybeSub } : null;
   }
 
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: CreateUserDto, file?: Express.Multer.File) {
     const exists = await this.usersRepo.findOne({
       where: { email: createUserDto.email },
     });
     if (exists) throw new ConflictException('이미 사용 중인 이메일입니다.');
+
+    const profileImage = file
+      ? await this.supabaseService.uploadProfileImage(file)
+      : null;
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const user = this.usersRepo.create({
@@ -41,14 +47,14 @@ export class UsersService {
       email: createUserDto.email,
       password: hashedPassword,
       nickname: createUserDto.nickname,
-      profileImageUrl: createUserDto.profileImageUrl,
+      profileImage,
     });
     const saved = await this.usersRepo.save(user);
     return {
       id: saved.id,
       email: saved.email,
       nickname: saved.nickname,
-      profileImageUrl: saved.profileImageUrl,
+      profileImage: saved.profileImage,
       createdAt: saved.createdAt,
     };
   }
@@ -60,7 +66,7 @@ export class UsersService {
       id: user.id,
       email: user.email,
       nickname: user.nickname,
-      profileImageUrl: user.profileImageUrl,
+      profileImage: user.profileImage,
       createdAt: user.createdAt,
     };
   }
@@ -84,7 +90,7 @@ export class UsersService {
       id: user.id,
       email: user.email,
       nickname: user.nickname,
-      profileImageUrl: user.profileImageUrl,
+      profileImage: user.profileImage,
       createdAt: user.createdAt,
     };
   }

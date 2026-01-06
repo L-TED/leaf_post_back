@@ -19,7 +19,7 @@ export class Users {
   nickname: string;
 
   @Column('text', { name: 'profile_image_url', nullable: true })
-  profileImageUrl: string;
+  profileImage: string | null;
 
   @Column('timestamp with time zone', {
     name: 'created_at',
