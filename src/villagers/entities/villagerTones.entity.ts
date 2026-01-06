@@ -14,7 +14,7 @@ export class VillagerTones {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;
 
-  // 말투 스타일(프리뷰 용 텍스트)
+  // Rule fallback 시 설명/말투 요약 설명
   @Column('character varying', {
     name: 'speech_style',
     nullable: true,
@@ -22,7 +22,7 @@ export class VillagerTones {
   })
   speechStyle: string | null;
 
-  // 말투 어미
+  // 문장 끝 고정 패턴
   @Column('character varying', {
     name: 'sentence_ending',
     nullable: true,
@@ -30,11 +30,11 @@ export class VillagerTones {
   })
   sentenceEnding: string | null;
 
-  // GPT 성격 키워드(프롬프트 용)
+  // 성격 키워드 집합
   @Column('text', { name: 'personality_keywords', nullable: true })
   personalityKeywords: string | null;
 
-  // 예시 문장(프롬프트 구체화 용)
+  // 예시 문장
   @Column('text', { name: 'example_sentences', nullable: true })
   exampleSentences: string | null;
 
@@ -45,9 +45,11 @@ export class VillagerTones {
   @Column('text', { name: 'system_prompt', nullable: true })
   systemPrompt: string | null;
 
+  // 최대 길이 제한
   @Column('integer', { name: 'max_length', nullable: true })
   maxLength: number | null;
 
+  // 감정 과다 차단
   @Column('boolean', {
     name: 'forbid_emotion',
     nullable: true,

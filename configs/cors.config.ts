@@ -9,9 +9,10 @@ const parseAllowList = (raw: string | undefined): string[] => {
 const defaultAllowList = ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
 const allowList = (() => {
-  const fromEnv =
-    parseAllowList(process.env.CORS_ORIGINS) ||
-    parseAllowList(process.env.FRONTEND_ORIGIN);
+  const fromEnv = [
+    ...parseAllowList(process.env.CORS_ORIGINS),
+    ...parseAllowList(process.env.FRONTEND_ORIGIN),
+  ];
 
   return fromEnv.length ? fromEnv : defaultAllowList;
 })();
