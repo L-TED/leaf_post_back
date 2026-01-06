@@ -16,7 +16,7 @@ export class TokenService {
   ) {}
 
   generateAccessToken(userId: string) {
-    return this.jwtService.sign({ sub: userId }, { expiresIn: '3m' });
+    return this.jwtService.sign({ sub: userId }, { expiresIn: '15m' });
   }
 
   validateAccessToken(token: string) {
@@ -26,7 +26,7 @@ export class TokenService {
   async generateRefreshToken(userId: string) {
     const refreshToken = this.jwtService.sign(
       { sub: userId },
-      { expiresIn: '10m' },
+      { expiresIn: '7d' },
     );
 
     const target = await this.tokenRepo.findOne({
@@ -38,7 +38,7 @@ export class TokenService {
     const newToken = await this.tokenRepo.create({
       token: hashedToken,
       user: { id: userId } as Users,
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     });
     await this.tokenRepo.save(newToken);
     return refreshToken;

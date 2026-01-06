@@ -20,10 +20,14 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { access, refresh } = await this.authService.login(loginDto);
+
+    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('refreshToken', refresh, {
       httpOnly: true,
-      sameSite: 'strict',
-      maxAge: 10 * 60 * 1000,
+      sameSite: isProd ? 'none' : 'strict',
+      secure: isProd,
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     return { access };
@@ -52,7 +56,13 @@ export class AuthController {
         '리프레시 토큰이 없습니다. 다시 로그인해주세요.',
       );
 
-    res.clearCookie('refreshToken');
+    const isProd = process.env.NODE_ENV === 'production';
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      sameSite: isProd ? 'none' : 'strict',
+      secure: isProd,
+      path: '/',
+    });
     return this.authService.logout(refreshToken);
   }
 }
