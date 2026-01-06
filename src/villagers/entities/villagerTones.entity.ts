@@ -14,6 +14,7 @@ export class VillagerTones {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;
 
+  // 말투 스타일(프리뷰 용 텍스트)
   @Column('character varying', {
     name: 'speech_style',
     nullable: true,
@@ -21,6 +22,7 @@ export class VillagerTones {
   })
   speechStyle: string | null;
 
+  // 말투 어미
   @Column('character varying', {
     name: 'sentence_ending',
     nullable: true,
@@ -28,12 +30,15 @@ export class VillagerTones {
   })
   sentenceEnding: string | null;
 
+  // GPT 성격 키워드(프롬프트 용)
   @Column('text', { name: 'personality_keywords', nullable: true })
   personalityKeywords: string | null;
 
+  // 예시 문장(프롬프트 구체화 용)
   @Column('text', { name: 'example_sentences', nullable: true })
   exampleSentences: string | null;
 
+  // 톤
   @Column('character varying', { name: 'tone_type', length: 20 })
   toneType: string;
 

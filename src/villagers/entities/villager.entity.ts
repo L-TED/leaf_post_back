@@ -14,9 +14,11 @@ export class Villagers {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;
 
+  // 캐릭터 이름
   @Column('character varying', { name: 'name', length: 100 })
   name: string;
 
+  // 캐릭터 이미지
   @Column('text', { name: 'image_url' })
   imageUrl: string;
 

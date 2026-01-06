@@ -52,7 +52,8 @@
 **백엔드**
 
 - NestJS, TypeORM, PostgreSQL
-- Redis (인기 주민 랭킹)
+- **GPT Api(주민 말투 변환 최종 결정, src/infra/ 에서 관리)**
+- **Redis (인기 주민 랭킹, src/infra/ 에서 관리)**
 - Supabase Storage (이미지 저장)
 - 배포: Render
 
@@ -347,6 +348,7 @@ user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE
 **역할**
 
 - 주민 말투 규칙 조회 (`villager_tones`)
+- **주민의 말투 변환 규칙은 src/domain/ 에서 관리**
 - 미리보기용 변환 로직 실행
 - (선택) 미리보기 이미지 생성
 - **절대 DB에 저장하지 않음**
@@ -726,3 +728,183 @@ GPT 결과는 **그대로 신뢰하지 않는다**.
 - emails 테이블 저장
 
 ---
+
+# 백엔드 주의점
+
+## 1. 왜 Redis와 GPT가 “위험한가”
+
+Redis가 위험한 이유
+
+상태를 DB처럼 착각하기 쉬움
+
+TTL, eviction, 네트워크 오류 발생
+
+데이터 유실 가능성이 기본값
+
+GPT API가 위험한 이유
+
+외부 의존성 (항상 실패 가능)
+
+비용 발생
+
+응답 지연/불안정
+
+결과 비결정성
+
+👉 공통점
+“비즈니스 로직에 섞이면 전체 시스템을 오염시킨다”
+
+## 2. 절대 하면 안 되는 구조 ❌
+
+// emails.service.ts
+async createEmail() {
+const tone = await this.gpt.call(...); // ❌
+await this.redis.incr(...); // ❌
+this.emailRepo.save(...);
+}
+
+이렇게 되면:
+
+테스트 불가
+
+장애 전파
+
+교체 불가
+
+책임 경계 붕괴
+
+## 3. 정답 구조: 레이어 분리
+
+권장 레이어 구조
+Controller (HTTP)
+↓
+Application Service (Use Case)
+↓
+Domain Service
+↓
+Infrastructure (Redis / GPT)
+
+Nest 기준으로 풀면 이렇게 된다.
+
+## 4. NestJS 디렉터리 구조 (권장)
+
+src/
+├─ modules/
+│ ├─ emails/
+│ │ ├─ emails.controller.ts
+│ │ ├─ emails.service.ts ← 유스케이스 조합만
+│ │ └─ emails.module.ts
+│
+├─ domain/
+│ ├─ tone/
+│ │ ├─ tone.service.ts ← 말투 변환 규칙
+│ │ └─ tone.interface.ts
+│
+├─ infra/
+│ ├─ gpt/
+│ │ ├─ gpt.client.ts
+│ │ └─ gpt.module.ts
+│ │
+│ └─ redis/
+│ ├─ redis.client.ts
+│ └─ redis.module.ts
+
+## 5. GPT 설계 원칙 (중요)
+
+GPT는 반드시 “Client”로 감싼다
+// infra/gpt/gpt.client.ts
+export class GptClient {
+async transform(systemPrompt: string, input: string): Promise<string> {
+// OpenAI API 호출
+}
+}
+
+비즈니스 로직 ❌
+
+if/else ❌
+
+tone 판단 ❌
+
+Domain Service에서 GPT 사용
+// domain/tone/tone.service.ts
+export class ToneService {
+constructor(private readonly gpt: GptClient) {}
+
+async transform(input: string, tone: VillagerTone): Promise<string> {
+if (tone.type === 'GPT') {
+return this.gpt.transform(tone.systemPrompt, input);
+}
+return applyRule(input, tone);
+}
+}
+
+→ GPT는 도구일 뿐
+→ 판단은 Domain에서
+
+## 6. Redis 설계 원칙 (중요)
+
+Redis는 “캐시 + 카운터”만 담당
+// infra/redis/redis.client.ts
+export class RedisClient {
+async incr(key: string): Promise<number> {}
+async get(key: string): Promise<string | null> {}
+}
+
+도메인 의미 없음
+
+key 규칙만 존재
+
+Domain에서 의미 부여
+// domain/popularity/popularity.service.ts
+export class PopularityService {
+constructor(private redis: RedisClient) {}
+
+async increaseVillagerUsage(villagerId: number) {
+await this.redis.incr(`villager:${villagerId}:usage`);
+}
+}
+
+## 7. Application Service는 “조립자”
+
+// emails.service.ts
+async createEmail(dto) {
+const tone = await this.toneRepo.findByVillager(dto.villagerId);
+
+const transformed = await this.toneService.transform(
+dto.originalText,
+tone
+);
+
+await this.popularityService.increaseVillagerUsage(dto.villagerId);
+
+await this.emailRepo.save({
+...dto,
+transformedText: transformed,
+});
+}
+
+👉 여기엔 Redis, GPT 코드가 단 한 줄도 없다
+
+## 8. 이 구조의 압도적 장점
+
+항목 효과
+테스트 GPT/Redis mocking 쉬움
+장애 GPT 실패 → Domain에서 fallback
+교체 GPT → 다른 모델 즉시 가능
+학습 MVC 깨끗
+확장 어드민, 배치 작업 추가 쉬움
+
+## 9. “MVC에서 배제해야 하나?”에 대한 정확한 답
+
+❌ 완전 배제
+
+컨트롤러, 엔티티, 리포지토리
+
+✔ 레이어 외부로 완전 분리
+
+Infra (Client)
+
+Domain Service (판단)
+
+👉 MVC는 “입출력”
+👉 Redis / GPT는 “환경”

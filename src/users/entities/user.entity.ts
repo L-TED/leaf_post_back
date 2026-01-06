@@ -18,7 +18,7 @@ export class Users {
   @Column('character varying', { name: 'nickname', length: 50 })
   nickname: string;
 
-  @Column('text', { name: 'profile_image_url' })
+  @Column('text', { name: 'profile_image_url', nullable: true })
   profileImageUrl: string;
 
   @Column('timestamp with time zone', {
