@@ -339,7 +339,6 @@ user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE
 - 말투 규칙 정의
 - 최종 변환 로직
 - 이미지 생성 로직
-- DB 저장
 
 ---
 
