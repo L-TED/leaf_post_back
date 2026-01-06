@@ -46,7 +46,7 @@ export class UsersController {
 
   @Post('signup')
   @UseInterceptors(
-    FileInterceptor('file', {
+    FileInterceptor('profileImage', {
       storage: memoryStorage(),
     }),
   )
