@@ -6,7 +6,7 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { VillagerTones } from './villagerTones.entity';
+import { VillagerTones } from '../../emails/entities/villager-tones.entity';
 
 @Index('villagers_pkey', ['id'], { unique: true })
 @Entity('villagers', { schema: 'public' })

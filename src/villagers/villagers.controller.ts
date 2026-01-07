@@ -1,15 +1,5 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-} from '@nestjs/common';
+import { Controller, Get, Post, Param } from '@nestjs/common';
 import { VillagersService } from './villagers.service';
-import { CreateVillagerDto } from './dto/create-villager.dto';
-import { UpdateVillagerDto } from './dto/update-villager.dto';
 
 @Controller('villagers')
 export class VillagersController {

@@ -6,7 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Villagers } from './villager.entity';
+import { Villagers } from '../../villagers/entities/villager.entity';
 
 @Index('villager_tones_pkey', ['id'], { unique: true })
 @Entity('villager_tones', { schema: 'public' })
@@ -42,6 +42,7 @@ export class VillagerTones {
   @Column('character varying', { name: 'tone_type', length: 20 })
   toneType: string;
 
+  // 시스템 프롬프트(예: "너는 동물의 숲 주민 "애플"이야. 밝고 명랑하게 말하고 말 끝마다 큐룽을 붙여")
   @Column('text', { name: 'system_prompt', nullable: true })
   systemPrompt: string | null;
 

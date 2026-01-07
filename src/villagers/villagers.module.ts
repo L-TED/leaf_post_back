@@ -3,7 +3,7 @@ import { VillagersService } from './villagers.service';
 import { VillagersController } from './villagers.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Villagers } from './entities/villager.entity';
-import { VillagerTones } from './entities/villagerTones.entity';
+import { VillagerTones } from '../emails/entities/villager-tones.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Villagers, VillagerTones])],

@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { CreateVillagerDto } from './dto/create-villager.dto';
-import { UpdateVillagerDto } from './dto/update-villager.dto';
 
 @Injectable()
 export class VillagersService {

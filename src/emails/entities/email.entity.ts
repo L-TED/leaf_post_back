@@ -4,6 +4,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 @Index('emails_pkey', ['id'], { unique: true })
 @Entity('emails', { schema: 'public' })
+// @IsIn(['reserved', 'sent', 'canceled', 'failed'])
 export class Emails {
   @Column('uuid', { primary: true, name: 'id' })
   id: string;
@@ -20,14 +21,14 @@ export class Emails {
   @Column('text', { name: 'original_text' })
   originalText: string;
 
-  @Column('text', { name: 'transformed_text', nullable: true })
-  transformedText: string | null;
+  @Column('text', { name: 'transformed_text' })
+  transformedText: string;
 
   @Column('text', { name: 'image_url', nullable: true })
   imageUrl: string | null;
 
-  @Column('timestamp with time zone', { name: 'scheduled_at', nullable: true })
-  scheduledAt: Date | null;
+  @Column('timestamp with time zone', { name: 'scheduled_at' })
+  scheduledAt: Date;
 
   @Column('timestamp with time zone', {
     name: 'created_at',
