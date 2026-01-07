@@ -4,14 +4,54 @@ import { Villagers } from '../../villagers/entities/villager.entity';
 type VillagerSeedRow = Pick<Villagers, 'id' | 'name' | 'imageUrl'>;
 
 const VILLAGERS: VillagerSeedRow[] = [
-  { id: 1, name: '귀오미', imageUrl: '' },
-  { id: 2, name: '리처드', imageUrl: '' },
-  { id: 3, name: '비앙카', imageUrl: '' },
-  { id: 4, name: '아폴로', imageUrl: '' },
-  { id: 5, name: '애플', imageUrl: '' },
-  { id: 6, name: '미첼', imageUrl: '' },
-  { id: 7, name: '우락', imageUrl: '' },
-  { id: 8, name: '만복이', imageUrl: '' },
+  {
+    id: 1,
+    name: '귀오미',
+    imageUrl:
+      'https://eksgppqzbktzdbnajkze.supabase.co/storage/v1/object/public/villager-image/1.png',
+  },
+  {
+    id: 2,
+    name: '리처드',
+    imageUrl:
+      'https://eksgppqzbktzdbnajkze.supabase.co/storage/v1/object/public/villager-image/2.png',
+  },
+  {
+    id: 3,
+    name: '비앙카',
+    imageUrl:
+      'https://eksgppqzbktzdbnajkze.supabase.co/storage/v1/object/public/villager-image/3.png',
+  },
+  {
+    id: 4,
+    name: '아폴로',
+    imageUrl:
+      'https://eksgppqzbktzdbnajkze.supabase.co/storage/v1/object/public/villager-image/4.png',
+  },
+  {
+    id: 5,
+    name: '애플',
+    imageUrl:
+      'https://eksgppqzbktzdbnajkze.supabase.co/storage/v1/object/public/villager-image/5.png',
+  },
+  {
+    id: 6,
+    name: '미첼',
+    imageUrl:
+      'https://eksgppqzbktzdbnajkze.supabase.co/storage/v1/object/public/villager-image/6.png',
+  },
+  {
+    id: 7,
+    name: '우락',
+    imageUrl:
+      'https://eksgppqzbktzdbnajkze.supabase.co/storage/v1/object/public/villager-image/7.png',
+  },
+  {
+    id: 8,
+    name: '만복이',
+    imageUrl:
+      'https://eksgppqzbktzdbnajkze.supabase.co/storage/v1/object/public/villager-image/8.png',
+  },
 ];
 
 export async function seedVillagers(dataSource: DataSource) {
