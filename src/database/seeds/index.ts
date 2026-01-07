@@ -11,9 +11,11 @@ async function runSeeds() {
 
     console.log('[seed] DataSource initialized');
 
+    console.log('[seed] seeding villagers...');
     const villagersResult = await seedVillagers(AppDataSource);
     console.log('[seed] villagers:', villagersResult);
 
+    console.log('[seed] seeding villager_tones...');
     const villagerTonesResult = await seedVillagerTones(AppDataSource);
     console.log('[seed] villager_tones:', villagerTonesResult);
 

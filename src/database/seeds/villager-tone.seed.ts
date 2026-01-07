@@ -130,6 +130,8 @@ const VILLAGER_TONES: VillagerToneSeedRow[] = [
   },
 ];
 
+const VILLAGER_TONE_IDS = VILLAGER_TONES.map((t) => t.id);
+
 export async function seedVillagerTones(dataSource: DataSource) {
   const queryRunner = dataSource.createQueryRunner();
   await queryRunner.connect();
@@ -139,18 +141,25 @@ export async function seedVillagerTones(dataSource: DataSource) {
 
     const repo = queryRunner.manager.getRepository(VillagerTones);
 
-    // Guard: if any row exists, skip.
-    const existingCount = await repo.count();
-    if (existingCount > 0) {
-      await queryRunner.rollbackTransaction();
+    // Guard: insert only missing fixed IDs (safe for repeated runs in dev/prod).
+    const existing = await repo.find({
+      select: { id: true },
+      where: VILLAGER_TONE_IDS.map((id) => ({ id })),
+    });
+
+    const existingIds = new Set(existing.map((r) => r.id));
+    const missingRows = VILLAGER_TONES.filter((t) => !existingIds.has(t.id));
+
+    if (missingRows.length === 0) {
+      await queryRunner.commitTransaction();
       return {
         inserted: 0,
         skipped: VILLAGER_TONES.length,
-        reason: 'villager_tones 테이블에 이미 데이터가 존재합니다.',
+        reason: 'villager_tones seed 데이터가 이미 존재합니다.',
       };
     }
 
-    await repo.insert(VILLAGER_TONES);
+    await repo.insert(missingRows);
 
     // Sequence alignment (if SERIAL sequence exists)
     try {
@@ -169,7 +178,10 @@ export async function seedVillagerTones(dataSource: DataSource) {
     }
 
     await queryRunner.commitTransaction();
-    return { inserted: VILLAGER_TONES.length, skipped: 0 };
+    return {
+      inserted: missingRows.length,
+      skipped: VILLAGER_TONES.length - missingRows.length,
+    };
   } catch (err) {
     try {
       await queryRunner.rollbackTransaction();

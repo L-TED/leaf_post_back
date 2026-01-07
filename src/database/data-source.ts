@@ -23,6 +23,16 @@ const required = (key: string): string => {
   return value;
 };
 
+const sslEnabled = (() => {
+  const raw = String(process.env.DB_SSL ?? '');
+  return raw.toLowerCase() === 'true' || raw === '1';
+})();
+
+const sslRejectUnauthorized = (() => {
+  const raw = String(process.env.DB_SSL_REJECT_UNAUTHORIZED ?? 'true');
+  return raw.toLowerCase() === 'true' || raw === '1';
+})();
+
 export const AppDataSource = new DataSource({
   type: 'postgres',
   host: required('DB_HOST'),
@@ -30,6 +40,7 @@ export const AppDataSource = new DataSource({
   username: required('DB_USERNAME'),
   password: required('DB_PASSWORD'),
   database: required('DB_DATABASE'),
+  ssl: sslEnabled ? { rejectUnauthorized: sslRejectUnauthorized } : undefined,
   synchronize: false,
   entities: [Users, Emails, VillagerTones, RefreshTokens, Villagers],
   migrations: [

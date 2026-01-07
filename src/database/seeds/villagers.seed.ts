@@ -54,6 +54,8 @@ const VILLAGERS: VillagerSeedRow[] = [
   },
 ];
 
+const VILLAGER_IDS = VILLAGERS.map((v) => v.id);
+
 export async function seedVillagers(dataSource: DataSource) {
   const queryRunner = dataSource.createQueryRunner();
   await queryRunner.connect();
@@ -63,18 +65,25 @@ export async function seedVillagers(dataSource: DataSource) {
 
     const repo = queryRunner.manager.getRepository(Villagers);
 
-    // Guard: if any row exists, do not insert again.
-    const existingCount = await repo.count();
-    if (existingCount > 0) {
-      await queryRunner.rollbackTransaction();
+    // Guard: insert only missing fixed IDs (safe for repeated runs in dev/prod).
+    const existing = await repo.find({
+      select: { id: true },
+      where: VILLAGER_IDS.map((id) => ({ id })),
+    });
+
+    const existingIds = new Set(existing.map((r) => r.id));
+    const missingRows = VILLAGERS.filter((v) => !existingIds.has(v.id));
+
+    if (missingRows.length === 0) {
+      await queryRunner.commitTransaction();
       return {
         inserted: 0,
         skipped: VILLAGERS.length,
-        reason: 'villagers 테이블에 이미 데이터가 존재합니다.',
+        reason: 'villagers seed 데이터가 이미 존재합니다.',
       };
     }
 
-    await repo.insert(VILLAGERS);
+    await repo.insert(missingRows);
 
     // Keep sequence in sync for future inserts (safe even if seed is the only path).
     try {
@@ -93,7 +102,10 @@ export async function seedVillagers(dataSource: DataSource) {
     }
 
     await queryRunner.commitTransaction();
-    return { inserted: VILLAGERS.length, skipped: 0 };
+    return {
+      inserted: missingRows.length,
+      skipped: VILLAGERS.length - missingRows.length,
+    };
   } catch (err) {
     try {
       await queryRunner.rollbackTransaction();
