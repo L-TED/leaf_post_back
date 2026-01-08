@@ -21,21 +21,19 @@ export class AuthController {
   ) {
     const { access, refresh } = await this.authService.login(loginDto);
 
-    const isProd = process.env.NODE_ENV === 'production';
-
     // accessToken: API 호출용 (AuthGuard가 쿠키/헤더 모두 지원)
     res.cookie('accessToken', access, {
       httpOnly: true,
-      sameSite: isProd ? 'none' : 'strict',
-      secure: isProd,
+      sameSite: 'none',
+      secure: true,
       path: '/',
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie('refreshToken', refresh, {
       httpOnly: true,
-      sameSite: isProd ? 'none' : 'strict',
-      secure: isProd,
+      sameSite: 'none',
+      secure: true,
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -62,11 +60,10 @@ export class AuthController {
     return this.authService
       .validRefreshToken(refreshToken)
       .then(({ access }) => {
-        const isProd = process.env.NODE_ENV === 'production';
         res.cookie('accessToken', access, {
           httpOnly: true,
-          sameSite: isProd ? 'none' : 'strict',
-          secure: isProd,
+          sameSite: 'none',
+          secure: true,
           path: '/',
           maxAge: 15 * 60 * 1000,
         });
@@ -81,18 +78,16 @@ export class AuthController {
       throw new UnauthorizedException(
         '리프레시 토큰이 없습니다. 다시 로그인해주세요.',
       );
-
-    const isProd = process.env.NODE_ENV === 'production';
     res.clearCookie('accessToken', {
       httpOnly: true,
-      sameSite: isProd ? 'none' : 'strict',
-      secure: isProd,
+      sameSite: 'none',
+      secure: true,
       path: '/',
     });
     res.clearCookie('refreshToken', {
       httpOnly: true,
-      sameSite: isProd ? 'none' : 'strict',
-      secure: isProd,
+      sameSite: 'none',
+      secure: true,
       path: '/',
     });
     return this.authService.logout(refreshToken);
