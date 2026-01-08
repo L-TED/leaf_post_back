@@ -11,14 +11,26 @@ export class AuthGuard implements CanActivate {
   constructor(private jwtService: JwtService) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest(); // req로 변환
+
     const authorize = req.headers['authorization'];
-    if (!authorize) throw new UnauthorizedException('액세스 토큰이 없습니다.');
-    const [a, b] = authorize.split(' ');
-    if (a != 'Bearer')
-      throw new UnauthorizedException('Bearer 토큰 형식이 올바르지 않습니다.');
-    if (!b) throw new UnauthorizedException('액세스 토큰이 유효하지 않습니다.');
+    let token: string | undefined;
+    if (typeof authorize === 'string' && authorize.trim().length > 0) {
+      const [scheme, value] = authorize.split(' ');
+      if (scheme !== 'Bearer')
+        throw new UnauthorizedException(
+          'Bearer 토큰 형식이 올바르지 않습니다.',
+        );
+      token = value;
+    }
+
+    // 헤더가 없으면 쿠키(accessToken)로도 허용
+    if (!token) {
+      token = req.cookies?.accessToken;
+    }
+
+    if (!token) throw new UnauthorizedException('액세스 토큰이 없습니다.');
     try {
-      const payload = await this.jwtService.verifyAsync(b);
+      const payload = await this.jwtService.verifyAsync(token);
 
       const userId =
         payload &&
