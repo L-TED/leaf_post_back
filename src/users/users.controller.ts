@@ -17,7 +17,7 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateNicknameDto } from './dto/update-nickname.dto';
-import { UpdatePasswordDto } from './dto/update-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import type { Request } from 'express';
 import { AuthGuard } from 'common/guard/auth-guard.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -74,17 +74,35 @@ export class UsersController {
   }
 
   @UseGuards(AuthGuard)
-  @Patch('password')
-  updatePassword(@Req() req: Request, @Body() dto: UpdatePasswordDto) {
-    const userId = this.getUserIdFromAuthHeader(req);
-    return this.usersService.updatePassword(userId, dto);
-  }
-
-  @UseGuards(AuthGuard)
   @Patch('nickname')
   updateNickname(@Req() req: Request, @Body() dto: UpdateNicknameDto) {
     const userId = this.getUserIdFromAuthHeader(req);
     return this.usersService.updateNickname(userId, dto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('profile')
+  @UseInterceptors(
+    FileInterceptor('profileImage', {
+      storage: memoryStorage(),
+    }),
+  )
+  updateProfile(
+    @Req() req: Request,
+    @Body() _dto: UpdateProfileDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        fileIsRequired: true,
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /(png|jpg|jpeg)$/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    const userId = this.getUserIdFromAuthHeader(req);
+    return this.usersService.updateProfile(userId, file);
   }
 
   @UseGuards(AuthGuard)

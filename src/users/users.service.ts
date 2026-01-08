@@ -7,7 +7,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateNicknameDto } from './dto/update-nickname.dto';
-import { UpdatePasswordDto } from './dto/update-password.dto';
 import { Users } from './entities/user.entity';
 import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcrypt';
@@ -71,21 +70,30 @@ export class UsersService {
     };
   }
 
-  async updatePassword(id: string, dto: UpdatePasswordDto) {
-    const user = await this.usersRepo.findOne({ where: { id } });
-    if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
-
-    user.password = await bcrypt.hash(dto.password, 10);
-    await this.usersRepo.save(user);
-    return { message: '비밀번호가 변경되었습니다.' };
-  }
-
   async updateNickname(id: string, dto: UpdateNicknameDto) {
     const user = await this.usersRepo.findOne({ where: { id } });
     if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
 
     user.nickname = dto.nickname;
     await this.usersRepo.save(user);
+    return {
+      id: user.id,
+      email: user.email,
+      nickname: user.nickname,
+      profileImage: user.profileImage,
+      createdAt: user.createdAt,
+    };
+  }
+
+  async updateProfile(id: string, file: Express.Multer.File) {
+    const user = await this.usersRepo.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
+
+    const nextProfileImage =
+      await this.supabaseService.uploadProfileImage(file);
+    user.profileImage = nextProfileImage;
+    await this.usersRepo.save(user);
+
     return {
       id: user.id,
       email: user.email,
