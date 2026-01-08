@@ -45,10 +45,10 @@ export class CreateEmailDto {
   // subject:
   // 이메일 제목(예약/이력/발송 시 필요)
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(255)
-  subject: string;
+  subject?: string;
 
   // originalText:
   // GPT 변환의 입력 원문, GPT 변환 입력에 사용, DB에 original_text로 저장

@@ -6,7 +6,6 @@ import {
   Patch,
   Delete,
   Req,
-  UnauthorizedException,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -27,21 +26,13 @@ import { memoryStorage } from 'multer';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  private getUserIdFromAuthHeader(req: Request): string {
-    const authorize = req.headers['authorization'];
-    if (!authorize) throw new UnauthorizedException('액세스 토큰이 없습니다.');
-
-    const [scheme, token] = authorize.split(' ');
-    if (scheme !== 'Bearer')
-      throw new UnauthorizedException('Bearer 토큰 형식이 올바르지 않습니다.');
-    if (!token)
-      throw new UnauthorizedException('액세스 토큰이 유효하지 않습니다.');
-
-    const payload = this.usersService.decodeAccessToken(token);
-    if (!payload?.sub)
-      throw new UnauthorizedException('액세스 토큰이 유효하지 않습니다.');
-
-    return payload.sub;
+  private getUserId(
+    req: Request & { user?: { id?: string; userId?: string } },
+  ) {
+    const userId = req.user?.id ?? req.user?.userId;
+    // AuthGuard가 이미 검증/주입하므로 여기서는 방어적으로만 체크
+    if (!userId) throw new Error('인증 정보가 없습니다.');
+    return userId;
   }
 
   @Post('signup')
@@ -68,15 +59,18 @@ export class UsersController {
 
   @UseGuards(AuthGuard)
   @Get('me')
-  me(@Req() req: Request) {
-    const userId = this.getUserIdFromAuthHeader(req);
+  me(@Req() req: Request & { user?: { id?: string; userId?: string } }) {
+    const userId = this.getUserId(req);
     return this.usersService.findOne(userId);
   }
 
   @UseGuards(AuthGuard)
   @Patch('nickname')
-  updateNickname(@Req() req: Request, @Body() dto: UpdateNicknameDto) {
-    const userId = this.getUserIdFromAuthHeader(req);
+  updateNickname(
+    @Req() req: Request & { user?: { id?: string; userId?: string } },
+    @Body() dto: UpdateNicknameDto,
+  ) {
+    const userId = this.getUserId(req);
     return this.usersService.updateNickname(userId, dto);
   }
 
@@ -88,7 +82,7 @@ export class UsersController {
     }),
   )
   updateProfile(
-    @Req() req: Request,
+    @Req() req: Request & { user?: { id?: string; userId?: string } },
     @Body() _dto: UpdateProfileDto,
     @UploadedFile(
       new ParseFilePipe({
@@ -101,14 +95,14 @@ export class UsersController {
     )
     file: Express.Multer.File,
   ) {
-    const userId = this.getUserIdFromAuthHeader(req);
+    const userId = this.getUserId(req);
     return this.usersService.updateProfile(userId, file);
   }
 
   @UseGuards(AuthGuard)
   @Delete('me')
-  remove(@Req() req: Request) {
-    const userId = this.getUserIdFromAuthHeader(req);
+  remove(@Req() req: Request & { user?: { id?: string; userId?: string } }) {
+    const userId = this.getUserId(req);
     return this.usersService.remove(userId);
   }
 }
