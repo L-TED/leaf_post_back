@@ -49,30 +49,42 @@ export class VillagersService {
 
     const tones = await this.villagerTonesRepo.find({
       select: {
+        toneType: true,
         exampleSentences: true,
         villager: { id: true },
       },
       relations: { villager: true },
     });
 
-    const toneMap = new Map<number, string>();
+    const previewMap = new Map<number, string>();
+    const toneTypesMap = new Map<number, Set<string>>();
     for (const tone of tones) {
       const villagerId = tone.villager?.id;
       if (!villagerId) continue;
 
+      if (tone.toneType) {
+        const set = toneTypesMap.get(villagerId) ?? new Set<string>();
+        set.add(tone.toneType);
+        toneTypesMap.set(villagerId, set);
+      }
+
       const preview = this.pickPreviewText(tone.exampleSentences);
-      if (preview) toneMap.set(villagerId, preview);
+      if (preview && !previewMap.get(villagerId))
+        previewMap.set(villagerId, preview);
     }
 
     return villagers.map((v) => ({
       id: v.id,
       name: v.name,
       imageUrl: v.imageUrl,
-      previewText: toneMap.get(v.id) ?? '',
+      previewText: previewMap.get(v.id) ?? '',
+      tones: Array.from(toneTypesMap.get(v.id) ?? new Set<string>())
+        .sort()
+        .map((toneType) => ({ toneType })),
     }));
   }
 
-  async findOne(id: number) {
+  async findOne(id: number): Promise<VillagerPreviewDTO> {
     if (!Number.isFinite(id)) {
       throw new BadRequestException('유효하지 않은 주민 ID입니다.');
     }
@@ -85,6 +97,22 @@ export class VillagersService {
       throw new NotFoundException('주민을 찾을 수 없습니다.');
     }
 
-    return villager;
+    const toneTypes = new Set<string>();
+    let previewText = '';
+    for (const tone of villager.villagerTones ?? []) {
+      if (tone.toneType) toneTypes.add(tone.toneType);
+      if (!previewText)
+        previewText = this.pickPreviewText(tone.exampleSentences);
+    }
+
+    return {
+      id: villager.id,
+      name: villager.name,
+      imageUrl: villager.imageUrl,
+      previewText,
+      tones: Array.from(toneTypes)
+        .sort()
+        .map((toneType) => ({ toneType })),
+    };
   }
 }

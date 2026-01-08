@@ -88,8 +88,13 @@ export class CreateEmailDto {
   // Email Entity 생성 시 필요한 값
   // 크론에서 “발송 대상인지” 판단
   // 왜 status는 없나? => 예약 생성 = 무조건 reserved
+  // [Timezone contract]
+  // - 프론트는 JS Date.toISOString() 형태(UTC, Z)를 전송한다.
+  // - 백엔드는 Date로 파싱해 그대로 scheduled_at(timestamptz)에 저장한다.
+  // - 크론의 due 판단은 DB now() 기준으로 비교한다.
   // ISO 8601 string (e.g. 2026-01-08T12:34:56.000Z)
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsOptional()
   @IsDateString()
-  scheduledAt: string;
+  scheduledAt?: string;
 }

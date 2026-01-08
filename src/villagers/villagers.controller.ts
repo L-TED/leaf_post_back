@@ -12,7 +12,9 @@ export class VillagersController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<VillagerPreviewDTO> {
     return this.villagersService.findOne(id);
   }
 }

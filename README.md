@@ -727,6 +727,12 @@ GPT 결과는 **그대로 신뢰하지 않는다**.
 - transformedText 생성
 - emails 테이블 저장
 
+**Timezone Contract (scheduledAt)**
+
+- 프론트는 `scheduledAt`을 `new Date(...).toISOString()` 형태로 전송한다. (UTC, `Z`)
+- 백엔드는 이를 `Date`로 파싱해 그대로 `emails.scheduled_at (TIMESTAMP WITH TIME ZONE)`에 저장한다.
+- 예약 발송 워커는 “due 여부”를 애플리케이션 서버 시간이 아니라 **DB `now()` 기준**으로 비교한다.
+
 ---
 
 # 백엔드 주의점

@@ -9,7 +9,9 @@ import { VillagerTones } from './entities/villager-tones.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthGuard } from 'common/guard/auth-guard.guard';
-import { GptModule } from 'src/infra/gpt/gpt.module';
+import { GeminiModule } from 'src/infra/gemini/gemini.module';
+import { MailModule } from 'src/infra/mail/mail.module';
+import { EmailSenderJob } from './jobs/email-sender.job';
 
 @Module({
   imports: [
@@ -21,9 +23,10 @@ import { GptModule } from 'src/infra/gpt/gpt.module';
       inject: [ConfigService],
       imports: [ConfigModule],
     }),
-    GptModule,
+    GeminiModule,
+    MailModule,
   ],
   controllers: [EmailsController],
-  providers: [EmailsService, AuthGuard],
+  providers: [EmailsService, AuthGuard, EmailSenderJob],
 })
 export class EmailsModule {}

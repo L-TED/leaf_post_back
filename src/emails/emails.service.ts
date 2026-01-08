@@ -14,7 +14,7 @@ import { Emails } from './entities/email.entity';
 import { Users } from 'src/users/entities/user.entity';
 import { Villagers } from 'src/villagers/entities/villager.entity';
 import { VillagerTones } from './entities/villager-tones.entity';
-import { GptService } from 'src/infra/gpt/gpt.service';
+import { GeminiService } from 'src/infra/gemini/gemini.service';
 import { EmailDetailResponseDto } from './responseDto/email-detail-response.dto';
 import { EmailListItemResponseDto } from './responseDto/email-list-item-response.dto';
 
@@ -29,7 +29,7 @@ export class EmailsService {
     private readonly villagersRepo: Repository<Villagers>,
     @InjectRepository(VillagerTones)
     private readonly villagerTonesRepo: Repository<VillagerTones>,
-    private readonly gptService: GptService,
+    private readonly geminiService: GeminiService,
   ) {}
 
   private buildSystemPrompt(tone: VillagerTones, villager: Villagers): string {
@@ -88,12 +88,14 @@ export class EmailsService {
     );
     const systemPrompt = this.buildSystemPrompt(tone, tone.villager);
 
-    const transformedText = await this.gptService.transformEmail({
+    const toneType = dto.toneType as 'RULE' | 'GPT' | 'HYBRID';
+
+    const transformedText = await this.geminiService.transformEmail({
       originalText: dto.originalText,
       systemPrompt,
-      toneType: dto.toneType,
-      villagerName: tone.villager.name,
-      receiverEmail: dto.receiverEmail,
+      toneType,
+      maxLength: tone.maxLength,
+      forbidEmotion: tone.forbidEmotion,
     });
 
     return { transformedText };
@@ -114,26 +116,33 @@ export class EmailsService {
     );
     const systemPrompt = this.buildSystemPrompt(tone, tone.villager);
 
+    const toneType = dto.toneType as 'RULE' | 'GPT' | 'HYBRID';
+
     let transformedText: string;
     try {
-      transformedText = await this.gptService.transformEmail({
+      transformedText = await this.geminiService.transformEmail({
         originalText: dto.originalText,
         systemPrompt,
-        toneType: dto.toneType,
-        villagerName: tone.villager.name,
-        receiverEmail: dto.receiverEmail,
-        senderEmail: user.email,
+        toneType,
+        maxLength: tone.maxLength,
+        forbidEmotion: tone.forbidEmotion,
       });
     } catch {
-      throw new BadRequestException('GPT 변환에 실패했습니다.');
+      throw new BadRequestException('이메일 변환에 실패했습니다.');
     }
 
     if (!transformedText || typeof transformedText !== 'string') {
-      throw new BadRequestException('GPT 변환 결과가 올바르지 않습니다.');
+      throw new BadRequestException('이메일 변환 결과가 올바르지 않습니다.');
     }
 
-    const scheduledAt = new Date(dto.scheduledAt);
-    if (Number.isNaN(scheduledAt.getTime())) {
+    // Option A(MVP): 즉시 전송도 scheduledAt=now로 저장하고 cron이 처리
+    // Timezone contract:
+    // - 프론트는 scheduledAt을 toISOString() (UTC, Z)로 전송
+    // - 백엔드는 Date로 파싱해 그대로 scheduled_at(timestamptz)에 저장
+    const scheduledAt = dto.scheduledAt
+      ? new Date(dto.scheduledAt)
+      : new Date();
+    if (dto.scheduledAt && Number.isNaN(scheduledAt.getTime())) {
       throw new BadRequestException('scheduledAt 형식이 올바르지 않습니다.');
     }
 
