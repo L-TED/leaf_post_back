@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CreateEmailDto } from './dto/create-email.dto';
-import { UpdateEmailDto } from './dto/update-email.dto';
+import { CreateEmailDto } from './requestDto/create-email-request.dto';
 
 @Injectable()
 export class EmailsService {
@@ -14,10 +13,6 @@ export class EmailsService {
 
   findOne(id: number) {
     return `This action returns a #${id} email`;
-  }
-
-  update(id: number, updateEmailDto: UpdateEmailDto) {
-    return `This action updates a #${id} email`;
   }
 
   remove(id: number) {

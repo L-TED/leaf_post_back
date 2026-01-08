@@ -52,6 +52,30 @@ const VILLAGERS: VillagerSeedRow[] = [
     imageUrl:
       'https://eksgppqzbktzdbnajkze.supabase.co/storage/v1/object/public/villager-image/8.png',
   },
+  {
+    id: 9,
+    name: '쭈니',
+    imageUrl:
+      'https://eksgppqzbktzdbnajkze.supabase.co/storage/v1/object/public/villager-image/9.png',
+  },
+  {
+    id: 10,
+    name: '삐로코',
+    imageUrl:
+      'https://eksgppqzbktzdbnajkze.supabase.co/storage/v1/object/public/villager-image/10.png',
+  },
+  {
+    id: 11,
+    name: '문복',
+    imageUrl:
+      'https://eksgppqzbktzdbnajkze.supabase.co/storage/v1/object/public/villager-image/11.png',
+  },
+  {
+    id: 12,
+    name: '대길',
+    imageUrl:
+      'https://eksgppqzbktzdbnajkze.supabase.co/storage/v1/object/public/villager-image/12.png',
+  },
 ];
 
 const VILLAGER_IDS = VILLAGERS.map((v) => v.id);

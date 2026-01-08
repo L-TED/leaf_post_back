@@ -4,7 +4,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 @Index('emails_pkey', ['id'], { unique: true })
 @Entity('emails', { schema: 'public' })
-// @IsIn(['reserved', 'sent', 'canceled', 'failed'])
+// status => @IsIn(['reserved', 'sent', 'canceled', 'failed'])
 export class Emails {
   @Column('uuid', { primary: true, name: 'id' })
   id: string;
