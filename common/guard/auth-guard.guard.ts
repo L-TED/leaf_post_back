@@ -18,7 +18,21 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Bearer 토큰 형식이 올바르지 않습니다.');
     if (!b) throw new UnauthorizedException('액세스 토큰이 유효하지 않습니다.');
     try {
-      await this.jwtService.verifyAsync(b);
+      const payload = await this.jwtService.verifyAsync(b);
+
+      const userId =
+        payload &&
+        typeof payload === 'object' &&
+        'sub' in payload &&
+        typeof (payload as { sub?: unknown }).sub === 'string'
+          ? ((payload as { sub?: string }).sub as string)
+          : undefined;
+
+      if (!userId)
+        throw new UnauthorizedException('액세스 토큰이 유효하지 않습니다.');
+
+      // 컨트롤러에서 프로젝트 방식대로 꺼내 쓰도록 req.user를 세팅
+      req.user = { ...(req.user ?? {}), id: userId, userId };
       return true;
     } catch (error) {
       throw new UnauthorizedException('액세스 토큰이 유효하지 않습니다.');
