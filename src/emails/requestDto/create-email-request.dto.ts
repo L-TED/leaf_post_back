@@ -4,24 +4,59 @@ import {
   IsEmail,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsString,
   MaxLength,
   Min,
 } from 'class-validator';
 
 export class CreateEmailDto {
+  // --- Front legacy keys (optional) ---
+  // NOTE: 프론트 payload 호환을 위해 허용. (서버 로직에서는 receiverEmail/originalText로 사용)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(255)
+  toEmail?: string;
+
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(255)
+  fromEmail?: string;
+
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  content?: string;
+
   // receiverEmail:
   // 이메일 수신자, service create에서 이메일 entity 사용 시 필요
   // senderEmail은 “로그인한 사용자”로 서버가 결정
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value, obj }) => {
+    const raw = value ?? (obj as { toEmail?: unknown }).toEmail;
+    return typeof raw === 'string' ? raw.trim() : raw;
+  })
   @IsEmail()
   @MaxLength(255)
   receiverEmail: string;
 
+  // subject:
+  // 이메일 제목(예약/이력/발송 시 필요)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  subject: string;
+
   // originalText:
   // GPT 변환의 입력 원문, GPT 변환 입력에 사용, DB에 original_text로 저장
   // 왜 transformedText는 없나? => 변환 결과는 서버/GPT의 산출물
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value, obj }) => {
+    const raw = value ?? (obj as { content?: unknown }).content;
+    return typeof raw === 'string' ? raw.trim() : raw;
+  })
   @IsString()
   @IsNotEmpty()
   originalText: string;

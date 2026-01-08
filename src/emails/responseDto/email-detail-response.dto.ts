@@ -15,6 +15,7 @@ export class EmailDetailResponseDto {
   status: 'reserved' | 'sent' | 'canceled' | 'failed';
   receiverEmail: string;
   senderEmail: string;
+  subject: string;
   originalText: string;
   transformedText: string;
   scheduledAt: Date;

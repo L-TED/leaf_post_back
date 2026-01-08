@@ -11,6 +11,7 @@ export class EmailListItemResponseDto {
   id: string;
   status: 'reserved' | 'sent' | 'canceled' | 'failed';
   receiverEmail: string;
+  subject: string;
   scheduledAt: Date;
   createdAt: Date | null;
   villagerId: number;

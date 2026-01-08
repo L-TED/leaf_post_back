@@ -18,6 +18,13 @@ export class Emails {
   @Column('character varying', { name: 'receiver_email', length: 255 })
   receiverEmail: string;
 
+  @Column('character varying', {
+    name: 'subject',
+    length: 255,
+    nullable: true,
+  })
+  subject: string | null;
+
   @Column('text', { name: 'original_text' })
   originalText: string;
 
