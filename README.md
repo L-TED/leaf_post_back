@@ -51,13 +51,40 @@
 
 **백엔드**
 
-- NestJS, TypeORM, PostgreSQL
-- **GPT Api(주민 말투 변환 최종 결정, src/infra/ 에서 관리)**
-- **Redis (인기 주민 랭킹, src/infra/ 에서 관리)**
+- NestJS (TypeScript)
+- TypeORM, PostgreSQL
+- **Gemini API(주민 말투 변환 최종 결정, src/infra/gemini/ 에서 관리)**
+- **Redis(인기 주민 랭킹, Upstash, src/infra/redis/ 에서 관리)**
+- 스케줄러: @nestjs/schedule (Cron)
+- 메일 발송: nodemailer(SMTP) / MVP에서는 mock 발송(로그)로 대체
 - Supabase Storage (이미지 저장)
 - 배포: Render
 
 ---
+
+## 2-1. 핵심 기능 ↔ 기술 스택(라이브러리) 매칭
+
+| 핵심 기능         | 설명                               | 기술 스택(라이브러리/모듈)                              |
+| ----------------- | ---------------------------------- | ------------------------------------------------------- |
+| 인증/인가         | 로그인/토큰 발급, 인증 가드        | NestJS, @nestjs/jwt, bcrypt, cookie-parser              |
+| 입력 검증         | DTO 기반 유효성 검사               | class-validator, class-transformer                      |
+| 주민/말투 데이터  | 주민/말투 조회 및 관리             | TypeORM, PostgreSQL                                     |
+| 말투 변환(최종)   | 저장/송신 시점에 LLM 변환 수행     | Google Gemini API(@google/generative-ai), GeminiService |
+| 이메일 생성/예약  | 이메일 생성(즉시/예약), 상태 관리  | TypeORM, PostgreSQL, @nestjs/schedule(Cron)             |
+| 이메일 발송(SMTP) | SMTP 전송 계층(환경설정 시 활성화) | nodemailer, MailModule(Sender 분리)                     |
+| 인기 주민 랭킹    | 사용량 집계/상위 랭킹 조회         | Upstash Redis(@upstash/redis), Sorted Set               |
+| 이미지 저장       | 주민 이미지/리소스 저장            | Supabase Storage(@supabase/supabase-js)                 |
+
+---
+
+## 2-2. 기획 대비 변경점 / 현재 제약 사항
+
+- LLM 엔진 변경: 기획의 GPT 사용은 **Gemini로 변경** (백엔드: @google/generative-ai).
+  - 단, DB/DTO의 `toneType` 값은 호환을 위해 `GPT`/`HYBRID` 문자열을 그대로 사용하며 의미는 “LLM 사용”이다.
+- 무료 플랜 제약: Gemini 무료 플랜은 **크레딧/쿼터 제한**이 있어 호출이 제한될 수 있다. (운영 시 사용량 제한/대체 전략 필요)
+- 이메일 발송(SMTP) 현황: 핵심 기능은 **emails 테이블에 저장/예약 상태 관리까지** 구현되어 있으며,
+  실제 SMTP 전송은 MVP 단계에서 **mock 처리**(로그)로 대체된다.
+  - 예약 발송 워커(@nestjs/schedule)는 due 메일을 `sent`로 상태 변경만 수행한다. (실제 전송은 no-op)
 
 ## 3. 역할 분담 👥
 
@@ -230,7 +257,7 @@ personality_keywords TEXT,
 example_sentences TEXT,
 -- Tone 타입
 tone_type VARCHAR(20) NOT NULL CHECK (tone_type IN ('RULE', 'GPT', 'HYBRID')),
--- GPT 전용
+-- LLM 전용 (현재 Gemini 사용)
 system_prompt TEXT,
 max_length INT,
 forbid_emotion BOOLEAN DEFAULT false,
@@ -395,32 +422,32 @@ preview 변환 수행
 
 ---
 
-## 13. GPT 기반 말투 변환 시스템 📱
+## 13. Gemini 기반 말투 변환 시스템 📱
 
 ### 1. 도입 목적
 
 기존 Rule 기반 말투 변환 방식은 **일관성·속도·프리뷰 UX** 측면에서 유리하나,
 
-표현 다양성과 자연스러움에 한계를 보완하기 위해 **GPT API를 “최종 변환 엔진”으로 제한적으로 도입**
+표현 다양성과 자연스러움에 한계를 보완하기 위해 **Gemini API를 “최종 변환 엔진”으로 제한적으로 도입**
 
 ---
 
-### 2. GPT 사용 범위 (명확한 경계)
+### 2. Gemini 사용 범위 (명확한 경계)
 
-**GPT 사용 O**
+**Gemini 사용 O**
 
 - 최종 이메일 송신 시 말투 변환
 - Tone 타입이 `GPT` 또는 `HYBRID`인 경우
 - 서버에서만 호출
 
-**GPT 사용 X**
+**Gemini 사용 X**
 
 - 프론트엔드 실시간 미리보기
 - 사용자 입력 중간 단계
 - 말투 규칙 정의 자체
 - Tone 데이터 저장
 
-> GPT는 변환 도구이지 도메인 로직의 주체가 아님
+> Gemini(LLM)는 변환 도구이지 도메인 로직의 주체가 아님
 
 ---
 
@@ -428,21 +455,21 @@ preview 변환 수행
 
 **villager_tones.tone_type**
 
-| 값     | 설명                |
-| ------ | ------------------- |
-| RULE   | 기존 규칙 기반 변환 |
-| GPT    | GPT 기반 말투 변환  |
-| HYBRID | Rule + GPT 혼합     |
+| 값     | 설명                       |
+| ------ | -------------------------- |
+| RULE   | 기존 규칙 기반 변환        |
+| GPT    | LLM(Gemini) 기반 말투 변환 |
+| HYBRID | Rule + LLM(Gemini) 혼합    |
 
 ---
 
-### 4. Tone 데이터 구조 (GPT 대응)
+### 4. Tone 데이터 구조 (LLM 대응)
 
 **villager_tones 테이블 필드 확장**
 
 | 필드            | 설명                   |
 | --------------- | ---------------------- |
-| system_prompt   | GPT system 메시지      |
+| system_prompt   | LLM system 메시지      |
 | base_rules      | Rule 기반 후처리 규칙  |
 | gpt_constraints | 길이, 표현 제한        |
 | preview_rules   | 프론트 미리보기용 규칙 |
@@ -465,14 +492,14 @@ preview 변환 수행
 
 ---
 
-### 5. GPT 변환 처리 흐름 (서버)
+### 5. Gemini(LLM) 변환 처리 흐름 (서버)
 
 **최종 이메일 생성 시**
 
 1. 사용자 원문 수신
 2. villagers → villager_tones 조회
 3. tone_type 분기
-4. GPT 변환 수행
+4. Gemini(LLM) 변환 수행
 5. 결과 검증 및 후처리
 6. emails 테이블에 최종 결과 저장
 
@@ -480,14 +507,14 @@ preview 변환 수행
 
 ```tsx
 if (tone.type === 'GPT') {
-  result = gptTransform(input, tone.systemPrompt);
+  result = geminiTransform(input, tone.systemPrompt);
   result = postProcess(result, tone.baseRules);
 }
 ```
 
 ---
 
-### 6. GPT Prompt 설계 원칙
+### 6. Gemini Prompt 설계 원칙
 
 **System Prompt (고정)**
 
@@ -519,7 +546,7 @@ User:
 
 ### 7. 결과 검증 및 안전장치
 
-GPT 결과는 **그대로 신뢰하지 않는다**.
+Gemini 결과는 **그대로 신뢰하지 않는다**.
 
 **필수 검증 항목**
 
@@ -535,26 +562,26 @@ GPT 결과는 **그대로 신뢰하지 않는다**.
 
 ---
 
-### 8. 프리뷰와 GPT의 관계
+### 8. 프리뷰와 Gemini의 관계
 
 **프론트엔드**
 
 - preview_rules 기반 Rule 변환
-- GPT 호출 없음
+- Gemini 호출 없음
 
 **서버**
 
-- 최종 변환 시 GPT 호출
+- 최종 변환 시 Gemini 호출
 - 프리뷰 결과와 완전 일치 보장 대상 아님
 
-> 프리뷰는 “예상 UI”, GPT 결과는 “확정 데이터”
+> 프리뷰는 “예상 UI”, Gemini 결과는 “확정 데이터”
 
 ---
 
 ### 9. 장애 및 비용 대응 전략
 
-- GPT 실패 시 Rule 기반 fallback
-- tone_type별 GPT 사용 여부 제어
+- Gemini 실패 시 Rule 기반 fallback
+- tone_type별 LLM 사용 여부 제어
 - 호출 횟수 제한 (메일 1건당 1회)
 
 ---
@@ -737,7 +764,7 @@ GPT 결과는 **그대로 신뢰하지 않는다**.
 
 # 백엔드 주의점
 
-## 1. 왜 Redis와 GPT가 “위험한가”
+## 1. 왜 Redis와 LLM(Gemini)이 “위험한가”
 
 Redis가 위험한 이유
 
@@ -747,7 +774,7 @@ TTL, eviction, 네트워크 오류 발생
 
 데이터 유실 가능성이 기본값
 
-GPT API가 위험한 이유
+LLM(Gemini) API가 위험한 이유
 
 외부 의존성 (항상 실패 가능)
 
@@ -764,7 +791,7 @@ GPT API가 위험한 이유
 
 // emails.service.ts
 async createEmail() {
-const tone = await this.gpt.call(...); // ❌
+const tone = await this.gemini.call(...); // ❌
 await this.redis.incr(...); // ❌
 this.emailRepo.save(...);
 }
@@ -788,7 +815,7 @@ Application Service (Use Case)
 ↓
 Domain Service
 ↓
-Infrastructure (Redis / GPT)
+Infrastructure (Redis / LLM(Gemini))
 
 Nest 기준으로 풀면 이렇게 된다.
 
@@ -807,21 +834,21 @@ src/
 │ │ └─ tone.interface.ts
 │
 ├─ infra/
-│ ├─ gpt/
-│ │ ├─ gpt.client.ts
-│ │ └─ gpt.module.ts
+│ ├─ gemini/
+│ │ ├─ gemini.service.ts
+│ │ └─ gemini.module.ts
 │ │
 │ └─ redis/
 │ ├─ redis.client.ts
 │ └─ redis.module.ts
 
-## 5. GPT 설계 원칙 (중요)
+## 5. LLM(Gemini) 설계 원칙 (중요)
 
-GPT는 반드시 “Client”로 감싼다
-// infra/gpt/gpt.client.ts
-export class GptClient {
-async transform(systemPrompt: string, input: string): Promise<string> {
-// OpenAI API 호출
+Gemini는 반드시 “Client/Service”로 감싼다
+// infra/gemini/gemini.service.ts
+export class GeminiService {
+async transformEmail(...) {
+// Gemini API 호출
 }
 }
 
@@ -831,20 +858,20 @@ if/else ❌
 
 tone 판단 ❌
 
-Domain Service에서 GPT 사용
+Domain Service에서 LLM(Gemini) 사용
 // domain/tone/tone.service.ts
 export class ToneService {
-constructor(private readonly gpt: GptClient) {}
+constructor(private readonly gemini: GeminiService) {}
 
 async transform(input: string, tone: VillagerTone): Promise<string> {
 if (tone.type === 'GPT') {
-return this.gpt.transform(tone.systemPrompt, input);
+return this.gemini.transformEmail({ systemPrompt: tone.systemPrompt, originalText: input, toneType: 'GPT' });
 }
 return applyRule(input, tone);
 }
 }
 
-→ GPT는 도구일 뿐
+→ LLM(Gemini)은 도구일 뿐
 → 판단은 Domain에서
 
 ## 6. Redis 설계 원칙 (중요)
@@ -889,14 +916,14 @@ transformedText: transformed,
 });
 }
 
-👉 여기엔 Redis, GPT 코드가 단 한 줄도 없다
+👉 여기엔 Redis, LLM(Gemini) 코드가 단 한 줄도 없다
 
 ## 8. 이 구조의 압도적 장점
 
 항목 효과
-테스트 GPT/Redis mocking 쉬움
-장애 GPT 실패 → Domain에서 fallback
-교체 GPT → 다른 모델 즉시 가능
+테스트 LLM(Gemini)/Redis mocking 쉬움
+장애 LLM 실패 → Domain에서 fallback
+교체 LLM → 다른 모델 즉시 가능
 학습 MVC 깨끗
 확장 어드민, 배치 작업 추가 쉬움
 
@@ -913,4 +940,4 @@ Infra (Client)
 Domain Service (판단)
 
 👉 MVC는 “입출력”
-👉 Redis / GPT는 “환경”
+👉 Redis / LLM(Gemini)은 “환경”
