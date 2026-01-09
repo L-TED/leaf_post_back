@@ -120,18 +120,13 @@ export class EmailsService {
 
     const toneType = dto.toneType as 'RULE' | 'GPT' | 'HYBRID';
 
-    let transformedText: string;
-    try {
-      transformedText = await this.geminiService.transformEmail({
-        originalText: dto.originalText,
-        systemPrompt,
-        toneType,
-        maxLength: tone.maxLength,
-        forbidEmotion: tone.forbidEmotion,
-      });
-    } catch {
-      throw new BadRequestException('이메일 변환에 실패했습니다.');
-    }
+    const transformedText = await this.geminiService.transformEmail({
+      originalText: dto.originalText,
+      systemPrompt,
+      toneType,
+      maxLength: tone.maxLength,
+      forbidEmotion: tone.forbidEmotion,
+    });
 
     if (!transformedText || typeof transformedText !== 'string') {
       throw new BadRequestException('이메일 변환 결과가 올바르지 않습니다.');

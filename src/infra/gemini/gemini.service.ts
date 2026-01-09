@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  HttpException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -159,8 +160,18 @@ export class GeminiService {
 
       return content.trim();
     } catch (error) {
+      // 입력/환경 설정 오류는 4xx로 유지 (디버깅 가능)
+      if (error instanceof BadRequestException) throw error;
+
+      // 이미 HttpException(예: InternalServerErrorException)을 던진 경우 그대로 전달
+      if (error instanceof HttpException) throw error;
+
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Gemini transformEmail 실패: ${message}`);
+      const stack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(
+        `Gemini transformEmail 실패: ${message} (model=${this.geminiModel})`,
+        stack,
+      );
       throw new InternalServerErrorException('이메일 변환에 실패했습니다.');
     }
   }
