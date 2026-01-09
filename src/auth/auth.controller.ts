@@ -9,6 +9,11 @@ import {
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import type { Response, Request } from 'express';
+import {
+  getAccessTokenCookieOptions,
+  getClearAuthCookieOptions,
+  getRefreshTokenCookieOptions,
+} from './cookie-options';
 
 @Controller('auth')
 export class AuthController {
@@ -22,21 +27,9 @@ export class AuthController {
     const { access, refresh } = await this.authService.login(loginDto);
 
     // accessToken: API 호출용 (AuthGuard가 쿠키/헤더 모두 지원)
-    res.cookie('accessToken', access, {
-      httpOnly: true,
-      sameSite: 'none',
-      secure: true,
-      path: '/',
-      maxAge: 15 * 60 * 1000,
-    });
+    res.cookie('accessToken', access, getAccessTokenCookieOptions());
 
-    res.cookie('refreshToken', refresh, {
-      httpOnly: true,
-      sameSite: 'none',
-      secure: true,
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie('refreshToken', refresh, getRefreshTokenCookieOptions());
 
     // 프론트 호환: accessToken 키로도 내려줌
     return { accessToken: access, access };
@@ -60,13 +53,7 @@ export class AuthController {
     return this.authService
       .validRefreshToken(refreshToken)
       .then(({ access }) => {
-        res.cookie('accessToken', access, {
-          httpOnly: true,
-          sameSite: 'none',
-          secure: true,
-          path: '/',
-          maxAge: 15 * 60 * 1000,
-        });
+        res.cookie('accessToken', access, getAccessTokenCookieOptions());
         return { accessToken: access, access };
       });
   }
@@ -78,18 +65,9 @@ export class AuthController {
       throw new UnauthorizedException(
         '리프레시 토큰이 없습니다. 다시 로그인해주세요.',
       );
-    res.clearCookie('accessToken', {
-      httpOnly: true,
-      sameSite: 'none',
-      secure: true,
-      path: '/',
-    });
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      sameSite: 'none',
-      secure: true,
-      path: '/',
-    });
+    const clearOptions = getClearAuthCookieOptions();
+    res.clearCookie('accessToken', clearOptions);
+    res.clearCookie('refreshToken', clearOptions);
     return this.authService.logout(refreshToken);
   }
 }

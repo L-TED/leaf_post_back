@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import type { Response } from 'express';
 import { TokenService } from 'src/auth/tokens.service';
+import { getAccessTokenCookieOptions } from 'src/auth/cookie-options';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -40,13 +41,7 @@ export class AuthGuard implements CanActivate {
         throw new UnauthorizedException('액세스 토큰이 없습니다.');
 
       const access = await this.tokenService.validateRefreshToken(refreshToken);
-      res.cookie('accessToken', access, {
-        httpOnly: true,
-        sameSite: 'none',
-        secure: true,
-        path: '/',
-        maxAge: 15 * 60 * 1000,
-      });
+      res.cookie('accessToken', access, getAccessTokenCookieOptions());
 
       const payload = await this.jwtService.verifyAsync(access);
       const userId =
@@ -86,13 +81,7 @@ export class AuthGuard implements CanActivate {
         throw new UnauthorizedException('액세스 토큰이 유효하지 않습니다.');
 
       const access = await this.tokenService.validateRefreshToken(refreshToken);
-      res.cookie('accessToken', access, {
-        httpOnly: true,
-        sameSite: 'none',
-        secure: true,
-        path: '/',
-        maxAge: 15 * 60 * 1000,
-      });
+      res.cookie('accessToken', access, getAccessTokenCookieOptions());
 
       const payload = await this.jwtService.verifyAsync(access);
       const userId =

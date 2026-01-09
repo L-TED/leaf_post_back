@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, RequestMethod } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 
 import cookieParser from 'cookie-parser';
 import { corsConfig } from '../configs/cors.config';
@@ -9,7 +10,12 @@ import { ResponseFormatInterceptor } from '../common/interceptor/response-format
 import { AllExceptionFilter } from '../common/filter/all-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Needed when running behind a reverse proxy (e.g., Render) so
+  // secure-cookie / protocol-related behavior is consistent.
+  app.set('trust proxy', 1);
+
   app.setGlobalPrefix('api', {
     exclude: [{ path: '/', method: RequestMethod.GET }],
   });
