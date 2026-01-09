@@ -12,6 +12,7 @@ import { AuthGuard } from 'common/guard/auth-guard.guard';
 import { GeminiModule } from 'src/infra/gemini/gemini.module';
 import { MailModule } from 'src/infra/mail/mail.module';
 import { EmailSenderJob } from './jobs/email-sender.job';
+import { RedisModule } from 'src/infra/redis/redis.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { EmailSenderJob } from './jobs/email-sender.job';
     }),
     GeminiModule,
     MailModule,
+    RedisModule,
   ],
   controllers: [EmailsController],
   providers: [EmailsService, AuthGuard, EmailSenderJob],

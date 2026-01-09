@@ -17,6 +17,7 @@ import { VillagerTones } from './entities/villager-tones.entity';
 import { GeminiService } from 'src/infra/gemini/gemini.service';
 import { EmailDetailResponseDto } from './responseDto/email-detail-response.dto';
 import { EmailListItemResponseDto } from './responseDto/email-list-item-response.dto';
+import { RedisService } from 'src/infra/redis/redis.service';
 
 @Injectable()
 export class EmailsService {
@@ -30,6 +31,7 @@ export class EmailsService {
     @InjectRepository(VillagerTones)
     private readonly villagerTonesRepo: Repository<VillagerTones>,
     private readonly geminiService: GeminiService,
+    private readonly redisService: RedisService,
   ) {}
 
   private buildSystemPrompt(tone: VillagerTones, villager: Villagers): string {
@@ -161,6 +163,10 @@ export class EmailsService {
     });
 
     await this.emailsRepo.save(email);
+
+    // 집계 트리거: emails 생성(POST /emails) 성공 시점에만 발생
+    // preview에는 집계하지 않음
+    await this.redisService.incrementVillagerUsage(dto.villagerId);
 
     const saved = await this.emailsRepo.findOne({
       where: { id: email.id },

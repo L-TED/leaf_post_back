@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { VillagersService } from './villagers.service';
 import { VillagerPreviewDTO } from './dto/villager-preview.response.dto';
 
@@ -7,7 +7,15 @@ export class VillagersController {
   constructor(private readonly villagersService: VillagersService) {}
 
   @Get()
-  async findAll(): Promise<VillagerPreviewDTO[]> {
+  async findAll(
+    @Query('sort') sort?: string,
+    @Query('limit') limit?: string,
+  ): Promise<VillagerPreviewDTO[]> {
+    if (sort === 'popular') {
+      const parsedLimit = limit ? Number.parseInt(limit, 10) : undefined;
+      return this.villagersService.findPopular(parsedLimit);
+    }
+
     return this.villagersService.findAll();
   }
 
