@@ -32,9 +32,17 @@ import { DisabledMailSender } from './disabled-mail.sender';
         const mode = (modeRaw ?? '').toLowerCase();
         // 명시적으로 mock를 허용한 경우에만 mock 사용
         if (mode === 'mock') return mock;
+        if (mode === 'disabled') return disabled;
 
-        // 기본값: SMTP 미설정이면 실패시키고 EmailSenderJob이 failed로 마킹
-        return disabled;
+        // 기본값 정책
+        // - 개발/로컬: SMTP 미설정이면 mock로 흘려서 start:dev가 시끄럽지 않게
+        // - 운영: SMTP 미설정이면 disabled로 실패시켜 "전송됐다고 착각" 방지
+        const nodeEnv = (
+          configService.get<string>('NODE_ENV') ?? ''
+        ).toLowerCase();
+        const isProd = nodeEnv === 'production';
+
+        return isProd ? disabled : mock;
       },
     },
     MailService,
