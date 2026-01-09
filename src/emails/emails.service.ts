@@ -18,9 +18,12 @@ import { GeminiService } from 'src/infra/gemini/gemini.service';
 import { EmailDetailResponseDto } from './responseDto/email-detail-response.dto';
 import { EmailListItemResponseDto } from './responseDto/email-list-item-response.dto';
 import { RedisService } from 'src/infra/redis/redis.service';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class EmailsService {
+  private readonly logger = new Logger(EmailsService.name);
+
   constructor(
     @InjectRepository(Emails)
     private readonly emailsRepo: Repository<Emails>,
@@ -33,6 +36,45 @@ export class EmailsService {
     private readonly geminiService: GeminiService,
     private readonly redisService: RedisService,
   ) {}
+
+  private normalizeText(text: string): string {
+    return (text ?? '').replace(/\r\n/g, '\n').trim();
+  }
+
+  private applyPreviewRules(input: {
+    originalText: string;
+    sentenceEnding?: string | null;
+    maxLength?: number | null;
+    forbidEmotion?: boolean | null;
+  }): string {
+    let text = this.normalizeText(input.originalText);
+
+    // 최소한의 결정적(deterministic) 후처리만 수행
+    if (input.forbidEmotion) {
+      // 과도한 감정 표현/기호를 약하게 정리 (과격한 필터링은 피함)
+      text = text.replace(/[!！]+/g, '.');
+      text = text.replace(/[~〜]+/g, '');
+    }
+
+    const ending = (input.sentenceEnding ?? '').trim();
+    if (ending.length > 0) {
+      // 이미 끝맺음이 포함되어 있으면 중복 부착하지 않음
+      if (!text.endsWith(ending)) {
+        text = `${text}${ending}`;
+      }
+    }
+
+    // 공백 포함 최대 길이 제한
+    if (input.maxLength != null && Number.isFinite(input.maxLength)) {
+      const max = Math.max(1, Math.floor(input.maxLength));
+      if (text.length > max) text = text.slice(0, max).trimEnd();
+    }
+
+    // 연속 줄바꿈 과다 방지
+    text = text.replace(/\n{3,}/g, '\n\n');
+
+    return text;
+  }
 
   private buildSystemPrompt(tone: VillagerTones, villager: Villagers): string {
     const parts: string[] = [];
@@ -90,16 +132,18 @@ export class EmailsService {
     );
     const systemPrompt = this.buildSystemPrompt(tone, tone.villager);
 
-    const toneType = dto.toneType as 'RULE' | 'GPT' | 'HYBRID';
-
-    const transformedText = await this.geminiService.transformEmail({
+    // Preview는 UX 안정성을 위해 결정적 결과를 반환해야 하며,
+    // 외부 API 비용/장애에 민감하므로 LLM(Gemini) 호출을 피한다.
+    // (최종 create 단계에서만 Gemini를 사용)
+    const transformedText = this.applyPreviewRules({
       originalText: dto.originalText,
-      systemPrompt,
-      toneType,
+      sentenceEnding: tone.sentenceEnding,
       maxLength: tone.maxLength,
       forbidEmotion: tone.forbidEmotion,
     });
 
+    // 참고: systemPrompt는 최종 변환(create)에서 사용됨. preview에서는 보관만.
+    void systemPrompt;
     return { transformedText };
   }
 
@@ -120,13 +164,37 @@ export class EmailsService {
 
     const toneType = dto.toneType as 'RULE' | 'GPT' | 'HYBRID';
 
-    const transformedText = await this.geminiService.transformEmail({
-      originalText: dto.originalText,
-      systemPrompt,
-      toneType,
-      maxLength: tone.maxLength,
-      forbidEmotion: tone.forbidEmotion,
-    });
+    let transformedText: string;
+    if (toneType === 'RULE') {
+      transformedText = this.applyPreviewRules({
+        originalText: dto.originalText,
+        sentenceEnding: tone.sentenceEnding,
+        maxLength: tone.maxLength,
+        forbidEmotion: tone.forbidEmotion,
+      });
+    } else {
+      try {
+        transformedText = await this.geminiService.transformEmail({
+          originalText: dto.originalText,
+          systemPrompt,
+          toneType,
+          maxLength: tone.maxLength,
+          forbidEmotion: tone.forbidEmotion,
+        });
+      } catch (error) {
+        // 외부 API 장애/쿼터 이슈가 create 자체를 막지 않도록 fallback
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `Gemini 변환 실패로 rule fallback 처리합니다. toneType=${toneType} reason=${message}`,
+        );
+        transformedText = this.applyPreviewRules({
+          originalText: dto.originalText,
+          sentenceEnding: tone.sentenceEnding,
+          maxLength: tone.maxLength,
+          forbidEmotion: tone.forbidEmotion,
+        });
+      }
+    }
 
     if (!transformedText || typeof transformedText !== 'string') {
       throw new BadRequestException('이메일 변환 결과가 올바르지 않습니다.');
