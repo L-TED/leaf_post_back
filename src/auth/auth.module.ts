@@ -21,5 +21,6 @@ import { AuthService } from './auth.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, TokenService], // interface 커플링
+  exports: [TokenService],
 })
 export class AuthModule {}

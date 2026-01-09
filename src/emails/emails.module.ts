@@ -9,6 +9,7 @@ import { VillagerTones } from './entities/villager-tones.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthGuard } from 'common/guard/auth-guard.guard';
+import { AuthModule } from 'src/auth/auth.module';
 import { GeminiModule } from 'src/infra/gemini/gemini.module';
 import { EmailSenderJob } from './jobs/email-sender.job';
 import { RedisModule } from 'src/infra/redis/redis.module';
@@ -23,6 +24,7 @@ import { RedisModule } from 'src/infra/redis/redis.module';
       inject: [ConfigService],
       imports: [ConfigModule],
     }),
+    AuthModule,
     GeminiModule,
     RedisModule,
   ],

@@ -5,12 +5,18 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import type { Response } from 'express';
+import { TokenService } from 'src/auth/tokens.service';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
+  constructor(
+    private jwtService: JwtService,
+    private tokenService: TokenService,
+  ) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest(); // req로 변환
+    const res: Response = context.switchToHttp().getResponse();
 
     const authorize = req.headers['authorization'];
     let token: string | undefined;
@@ -28,7 +34,35 @@ export class AuthGuard implements CanActivate {
       token = req.cookies?.accessToken;
     }
 
-    if (!token) throw new UnauthorizedException('액세스 토큰이 없습니다.');
+    if (!token) {
+      const refreshToken = req.cookies?.refreshToken;
+      if (!refreshToken)
+        throw new UnauthorizedException('액세스 토큰이 없습니다.');
+
+      const access = await this.tokenService.validateRefreshToken(refreshToken);
+      res.cookie('accessToken', access, {
+        httpOnly: true,
+        sameSite: 'none',
+        secure: true,
+        path: '/',
+        maxAge: 15 * 60 * 1000,
+      });
+
+      const payload = await this.jwtService.verifyAsync(access);
+      const userId =
+        payload &&
+        typeof payload === 'object' &&
+        'sub' in payload &&
+        typeof (payload as { sub?: unknown }).sub === 'string'
+          ? ((payload as { sub?: string }).sub as string)
+          : undefined;
+
+      if (!userId)
+        throw new UnauthorizedException('액세스 토큰이 유효하지 않습니다.');
+
+      req.user = { ...(req.user ?? {}), id: userId, userId };
+      return true;
+    }
     try {
       const payload = await this.jwtService.verifyAsync(token);
 
@@ -47,7 +81,33 @@ export class AuthGuard implements CanActivate {
       req.user = { ...(req.user ?? {}), id: userId, userId };
       return true;
     } catch (error) {
-      throw new UnauthorizedException('액세스 토큰이 유효하지 않습니다.');
+      const refreshToken = req.cookies?.refreshToken;
+      if (!refreshToken)
+        throw new UnauthorizedException('액세스 토큰이 유효하지 않습니다.');
+
+      const access = await this.tokenService.validateRefreshToken(refreshToken);
+      res.cookie('accessToken', access, {
+        httpOnly: true,
+        sameSite: 'none',
+        secure: true,
+        path: '/',
+        maxAge: 15 * 60 * 1000,
+      });
+
+      const payload = await this.jwtService.verifyAsync(access);
+      const userId =
+        payload &&
+        typeof payload === 'object' &&
+        'sub' in payload &&
+        typeof (payload as { sub?: unknown }).sub === 'string'
+          ? ((payload as { sub?: string }).sub as string)
+          : undefined;
+
+      if (!userId)
+        throw new UnauthorizedException('액세스 토큰이 유효하지 않습니다.');
+
+      req.user = { ...(req.user ?? {}), id: userId, userId };
+      return true;
     }
   }
 }

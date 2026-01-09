@@ -7,6 +7,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthGuard } from 'common/guard/auth-guard.guard';
 import { SupabaseService } from 'src/provider/supabase.service';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { SupabaseService } from 'src/provider/supabase.service';
       inject: [ConfigService],
       imports: [ConfigModule],
     }),
+    AuthModule,
   ],
   controllers: [UsersController],
   providers: [UsersService, AuthGuard, SupabaseService],
