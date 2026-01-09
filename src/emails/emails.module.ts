@@ -10,7 +10,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthGuard } from 'common/guard/auth-guard.guard';
 import { GeminiModule } from 'src/infra/gemini/gemini.module';
-import { MailModule } from 'src/infra/mail/mail.module';
 import { EmailSenderJob } from './jobs/email-sender.job';
 import { RedisModule } from 'src/infra/redis/redis.module';
 
@@ -25,7 +24,6 @@ import { RedisModule } from 'src/infra/redis/redis.module';
       imports: [ConfigModule],
     }),
     GeminiModule,
-    MailModule,
     RedisModule,
   ],
   controllers: [EmailsController],

@@ -3,7 +3,6 @@ import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Emails } from '../entities/email.entity';
-import { MailService } from 'src/infra/mail/mail.service';
 
 @Injectable()
 export class EmailSenderJob {
@@ -12,7 +11,6 @@ export class EmailSenderJob {
   constructor(
     @InjectRepository(Emails)
     private readonly emailsRepo: Repository<Emails>,
-    private readonly mailService: MailService,
   ) {}
 
   // 매 1분마다 due 예약메일 발송 처리
@@ -32,42 +30,19 @@ export class EmailSenderJob {
 
     if (dueEmails.length === 0) return;
 
-    this.logger.log(`Due emails: ${dueEmails.length}`);
+    const ids = dueEmails.map((e) => e.id);
+    const result = await this.emailsRepo
+      .createQueryBuilder()
+      .update(Emails)
+      .set({ status: 'sent' })
+      .where('id IN (:...ids)', { ids })
+      .andWhere('status = :status', { status: 'reserved' })
+      .execute();
 
-    for (const email of dueEmails) {
-      try {
-        await this.mailService.sendMail({
-          from: email.senderEmail,
-          to: email.receiverEmail,
-          subject: email.subject ?? '',
-          text: email.transformedText,
-        });
-
-        // canceled는 건드리지 않기 위해 status 조건을 같이 둔다.
-        const result = await this.emailsRepo.update(
-          { id: email.id, status: 'reserved' },
-          { status: 'sent' },
-        );
-
-        if (!result.affected) {
-          this.logger.warn(
-            `Skip status update (not reserved anymore): emailId=${email.id}`,
-          );
-        }
-      } catch (err) {
-        this.logger.error(
-          `Send failed: emailId=${email.id} to=${email.receiverEmail}`,
-          err instanceof Error ? err.stack : undefined,
-        );
-
-        await this.emailsRepo.update(
-          { id: email.id, status: 'reserved' },
-          { status: 'failed' },
-        );
-
-        // TODO: 스키마 변경 없이 MVP에서는 1회 시도 후 failed 처리.
-        //       추후 retryCount 컬럼(또는 별도 테이블/Redis) 기반 재시도 확장 가능.
-      }
-    }
+    const affected = result.affected ?? 0;
+    const sample = ids.slice(0, 5).join(',');
+    this.logger.log(
+      `Marked emails as sent (no-op delivery). count=${affected}, sampleIds=[${sample}]`,
+    );
   }
 }
